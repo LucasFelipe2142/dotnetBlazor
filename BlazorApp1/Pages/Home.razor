@@ -1,0 +1,98 @@
+﻿@page "/home"
+@using BlazorApp1.Data
+@using BlazorApp1.IService
+@using System.Text.Json
+@inject IUsuarioService UsuarioService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<div class="page-container">
+    <h3 class="page-title">Selecione a matéria para visualizar o kanban</h3>
+
+    <div class="card-container">
+        @foreach (var materia in MateriasEmCurso)
+        {
+            <div class="card">
+                <a href="@($"detalhes/{materia.Id}?email={EmailUsuario}")">
+                    <p class="card-title">@materia.Nome</p>
+                </a>
+            </div>
+        }
+
+        <div class="card">
+            <a href="@($"relatorio?email={EmailUsuario}")">
+                <p class="card-title">Relatório</p>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-container {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .page-title {
+        font-size: 32px;
+        font-weight: bold;
+        color: #112255;
+        margin-bottom: 20px;
+    }
+
+    .card-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+    }
+
+    .card {
+        cursor: pointer;
+        background-color: #112255;
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        width: calc(30% - 20px);
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 200px;
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+</style>
+
+@code {
+    private List<MateriaResumida> MateriasEmCurso = new List<MateriaResumida>();
+    private string EmailUsuario;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        EmailUsuario = queryParams["email"];
+        var response = await UsuarioService.GetMateriasEmCurso(EmailUsuario);
+
+        if (response.IsSuccessStatusCode)
+        {
+            string responseBody = await response.Content.ReadAsStringAsync();
+            var document = JsonDocument.Parse(responseBody);
+
+            foreach (var materia in document.RootElement.EnumerateObject())
+            {
+                var materiaObj = JsonSerializer.Deserialize<MateriaResumida>(materia.Value.ToString(), new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                MateriasEmCurso.Add(materiaObj);
+            }
+        }
+    }
+}

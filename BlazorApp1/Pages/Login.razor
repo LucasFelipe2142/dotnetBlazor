@@ -1,0 +1,85 @@
+﻿@page "/login"
+@using BlazorApp1.Data
+@using BlazorApp1.IService
+@using System.Text.Json
+@inject IUsuarioService UsuarioService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h3 style="font-size: 32px; font-weight: bold; color: #ffffff;">Login</h3>
+
+<EditForm Model="usuario" OnValidSubmit="RealizarLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Email:</label>
+        <InputText @bind-Value="usuario.Email" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Senha:</label>
+        <InputText @bind-Value="usuario.Senha" type="password" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Entrar</button>
+    <p style="cursor: pointer; color: #ffffff; margin-top: 6px; font-size: 12px;" @onclick="IrParaCadastro">Primeira vez? Cadastre-se!</p>
+</EditForm>
+
+<style>
+    body {
+        background-color: #112255;
+        color: #ffffff;
+        padding-left: 50px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-control {
+        width: 90%;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #d5d5d5;
+        border-radius: 5px;
+    }
+
+    .btn {
+        margin-top: 3px;
+        width: 30%;
+        padding: 10px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background-color: #3296d4;
+        color: #ffffff;
+    }
+</style>
+
+@code {
+    private Usuario usuario = new Usuario() { Email = "@aluno.ifnmg.edu.br" };
+
+    private async Task RealizarLogin()
+    {
+        HttpResponseMessage response = await UsuarioService.VerificarCredenciaisAsync(usuario.Email, usuario.Senha);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo($"/home?email={Uri.EscapeDataString(usuario.Email)}");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Credenciais inválidas. Por favor, tente novamente.");
+        }
+    }
+
+    private void IrParaCadastro()
+    {
+        Navigation.NavigateTo("/cadastro");
+    }
+}

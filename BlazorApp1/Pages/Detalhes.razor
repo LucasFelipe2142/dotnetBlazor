@@ -1,0 +1,278 @@
+﻿@page "/detalhes/{id}"
+@using BlazorApp1.Data
+@using BlazorApp1.IService
+@using System.Text.Json
+@inject IUsuarioService UsuarioService
+@inject NavigationManager Navigation
+@inject HttpClient _httpClient
+
+<h3 style="font-size: 32px; font-weight: bold; color: #ffffff;">Detalhes</h3>
+
+<button @onclick="VoltarParaHome">Voltar para Home</button>
+
+<p>Detalhes da Matéria com ID: @IdMateria</p>
+
+<div class="kanban-board">
+    <div class="column a-fazer">
+        <h3>A Fazer</h3>
+        @foreach (var task in AFazer)
+        {
+            <div class="task" @onclick="(e) => OpenMoveDialog(task)">
+                @task.Nome
+                <p>Detalhes: @task.Descricao</p>
+            </div>
+        }
+    </div>
+    <div class="column em-progresso">
+        <h3>Em Progresso</h3>
+        @foreach (var task in EmProgresso)
+        {
+            <div class="task" @onclick="(e) => OpenMoveDialog(task)">
+                @task.Nome
+                <p>Detalhes: @task.Descricao</p>
+            </div>
+        }
+    </div>
+    <div class="column concluido">
+        <h3>Concluído</h3>
+        @foreach (var task in Concluida)
+        {
+            <div class="task" @onclick="(e) => OpenMoveDialog(task)">
+                @task.Nome
+                <p>Detalhes: @task.Descricao</p>
+            </div>
+        }
+    </div>
+    <div class="column em-espera">
+        <h3>Em Espera</h3>
+        @foreach (var task in EmEspera)
+        {
+            <div class="task" @onclick="(e) => OpenMoveDialog(task)">
+                @task.Nome
+                <p>Detalhes: @task.Descricao</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal" style="display: @(IsMoveDialogOpen ? "block" : "none")">
+    <div class="modal-content">
+        <span class="close" @onclick="CloseMoveDialog">&times;</span>
+        <h3>Selecione a coluna de destino</h3>
+        <label><input type="checkbox" @bind="MoveToAFazer" /> A Fazer</label>
+        <label><input type="checkbox" @bind="MoveToEmProgresso" /> Em Progresso</label>
+        <label><input type="checkbox" @bind="MoveToConcluida" /> Concluído</label>
+        <label><input type="checkbox" @bind="MoveToEmEspera" /> Em Espera</label>
+        <button @onclick="MoveTask">Mover</button>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="loading-popup">
+        <p>Carregando...</p>
+    </div>
+}
+
+
+<style>
+
+    .kanban-board {
+        display: flex;
+        justify-content: space-between;
+        min-height: 100vh;
+    }
+
+    .column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        height: 100%;
+    }
+
+    .em-progresso {
+        background-color: #ccc;
+    }
+
+    .concluido {
+        background-color: #fff;
+    }
+
+    .em-espera {
+        background-color: #ccc;
+    }
+
+    .a-fazer {
+        background-color: #fff;
+    }
+
+    .task {
+        margin: 5px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 50%;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+        .close:hover {
+            color: black;
+        }
+
+    .loading-popup {
+        position: fixed;
+        z-index: 2;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #fefefe;
+        border: 1px solid #888;
+        padding: 20px;
+        text-align: center;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private int IdMateria;
+    private List<TaskModel> EmProgresso = new List<TaskModel>();
+    private List<TaskModel> Concluida = new List<TaskModel>();
+    private List<TaskModel> EmEspera = new List<TaskModel>();
+    private List<TaskModel> AFazer = new List<TaskModel>();
+
+    private bool IsMoveDialogOpen = false;
+    private bool MoveToEmProgresso = false;
+    private bool MoveToConcluida = false;
+    private bool MoveToEmEspera = false;
+    private bool MoveToAFazer = false;
+    private TaskModel SelectedTask;
+
+    private bool IsLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IdMateria = int.Parse(Id);
+
+        await CarregarAtividades();
+
+        AFazer = TodasAtividades.Where(a => a.ColunaKanban == 10).ToList();
+        EmProgresso = TodasAtividades.Where(a => a.ColunaKanban == 20).ToList();
+        Concluida = TodasAtividades.Where(a => a.ColunaKanban == 30).ToList();
+        EmEspera = TodasAtividades.Where(a => a.ColunaKanban == 40).ToList();
+    }
+
+    private async Task CarregarAtividades()
+    {
+        var response = await UsuarioService.GetAtividadesMateria(IdMateria.ToString());
+
+        if (response.IsSuccessStatusCode)
+        {
+            var atividades = await response.Content.ReadFromJsonAsync<List<TaskModel>>();
+            TodasAtividades = atividades;
+        }
+    }
+
+    private void OpenMoveDialog(TaskModel task)
+    {
+        SelectedTask = task;
+        IsMoveDialogOpen = true;
+    }
+
+    private void CloseMoveDialog()
+    {
+        IsMoveDialogOpen = false;
+    }
+
+    private void MoveTask()
+    {
+        if (MoveToAFazer)
+        {
+            AFazer.Add(SelectedTask);
+            EmProgresso.Remove(SelectedTask);
+            Concluida.Remove(SelectedTask);
+            EmEspera.Remove(SelectedTask);
+            atualizaColunaBanco(IdMateria.ToString(), SelectedTask.Id, 10);
+        }
+        else if (MoveToEmProgresso)
+        {
+            EmProgresso.Add(SelectedTask);
+            Concluida.Remove(SelectedTask);
+            EmEspera.Remove(SelectedTask);
+            AFazer.Remove(SelectedTask);
+            atualizaColunaBanco(IdMateria.ToString(), SelectedTask.Id, 20);
+        }
+        else if (MoveToConcluida)
+        {
+            Concluida.Add(SelectedTask);
+            EmProgresso.Remove(SelectedTask);
+            EmEspera.Remove(SelectedTask);
+            AFazer.Remove(SelectedTask);
+            atualizaColunaBanco(IdMateria.ToString(), SelectedTask.Id, 30);
+        }
+        else if (MoveToEmEspera)
+        {
+            EmEspera.Add(SelectedTask);
+            EmProgresso.Remove(SelectedTask);
+            Concluida.Remove(SelectedTask);
+            AFazer.Remove(SelectedTask);
+            atualizaColunaBanco(IdMateria.ToString(), SelectedTask.Id, 40);
+        }
+
+        MoveToAFazer = false;
+        MoveToEmProgresso = false;
+        MoveToConcluida = false;
+        MoveToEmEspera = false;
+        SelectedTask = null;
+
+        CloseMoveDialog();
+    }
+
+    private async void atualizaColunaBanco(string idMateria, string idAtividade, decimal novoValor)
+    {
+        await UsuarioService.AtualizarValorAtividade(idMateria, idAtividade, novoValor);
+    }
+
+    private List<TaskModel> TodasAtividades = new List<TaskModel>();
+
+    private string EmailUsuario;
+
+    private void VoltarParaHome()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        EmailUsuario = queryParams["email"];
+        Navigation.NavigateTo($"/home?email={EmailUsuario}");
+    }
+
+}

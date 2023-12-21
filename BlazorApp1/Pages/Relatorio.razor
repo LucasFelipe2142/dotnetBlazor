@@ -1,0 +1,96 @@
+﻿@page "/relatorio"
+@using BlazorApp1.Data
+@using BlazorApp1.IService
+@using System.Text.Json
+@inject IUsuarioService UsuarioService
+@inject NavigationManager Navigation
+@inject HttpClient _httpClient
+
+<button @onclick="VoltarParaHome">Voltar para Home</button>
+<h3>Relatório do Aluno</h3>
+
+@if (relatorio == null)
+{
+    <p>Nenhum relatório disponível.</p>
+}
+else
+{
+    <p>ID do Aluno: @relatorio.IdAluno</p>
+    <p>Nome do Aluno: @relatorio.NomeAluno</p>
+
+    <div class="materias-container">
+        @foreach (var materia in relatorio.Materias)
+        {
+            <div class="materia-card">
+                <p>ID da Matéria: @materia.IdMateria</p>
+                <p>Nome da Matéria: @materia.NomeMateria</p>
+                <p>Nome do Professor: @materia.NomeProfessor</p>
+
+                <h5>Atividades:</h5>
+
+                @foreach (var atividade in materia.Atividades)
+                {
+                    <div class="atividade-card">
+                        <p>ID da Atividade: @atividade.IdAtividade</p>
+                        <p>Nome da Atividade: @atividade.NomeAtividade</p>
+                        <p>Descrição da Atividade: @atividade.DescricaoAtividade</p>
+                        <p>Data de Entrega: @atividade.DataEntregaAtividade</p>
+                        <p>Valor da Atividade: @atividade.ValorAtividade</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private RelatorioAlunoMateriasAtividades relatorio;
+    private string EmailUsuario;
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        EmailUsuario = queryParams["email"];
+        var response = await UsuarioService.GetRelatorio(EmailUsuario);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            relatorio = JsonSerializer.Deserialize<RelatorioAlunoMateriasAtividades>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+    }
+
+    private void VoltarParaHome()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        EmailUsuario = queryParams["email"];
+        Navigation.NavigateTo($"/home?email={EmailUsuario}");
+    }
+}
+
+<style>
+    .materias-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .materia-card {
+        background-color: #112255;
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 20px;
+        width: calc(30% - 20px);
+        box-sizing: border-box;
+        margin-bottom: 20px;
+    }
+
+    .atividade-card {
+        background-color: #1a3a5a;
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 10px;
+    }
+</style>
